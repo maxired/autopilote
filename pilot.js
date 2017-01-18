@@ -1,3 +1,10 @@
+const config = require('./config')
+
+const add = (...values) => {
+  return values.reduce((memo, v) => {
+    return memo + parseFloat(v)
+  }, 0)
+}
 
 const printLine = (reportLine) => {
   if (reportLine === '') {
@@ -33,52 +40,64 @@ const numberLines = function(line){
 }
 
 const getColumn = (reducedPages, page, line, column) => {
-  return numberLines(reducedPages[page][line])[column]
+
+  const num =  numberLines(reducedPages[page][line])[column]
+  return num
 }
 
-const add = (...values) => {
-  return values.reduce((memo, v) => {
-    return memo + parseFloat(v)
-  }, 0)
-}
+const getValueForColumns = (reducedPages, page, line, entry) => {
+  const columns = entry.columns instanceof Array ? entry.columns: [entry.columns]
 
-const addLines = (reducedPages, page, lines, column) => {
-  return lines.reduce( ( memo, lineIndex) => {
-    return memo + parseFloat(getColumn(reducedPages, page, lineIndex, column))
+  return columns.reduce( (memo, column) => {
+    return memo + parseFloat(getColumn(reducedPages, page, line, column))
   }, 0)
 
 }
+const getValueForlines = (reducedPages, page, entry) => {
+  const lines = entry.lines instanceof Array ?  entry.lines : [ entry.lines]
 
-module.exports = function(reducedPages){
-  const brut = getColumn(reducedPages, 0, 0, 1)
+  return lines.reduce( (memo, line) => {
+    return memo + getValueForColumns(reducedPages, page, line, entry)
+  }, 0)
+}
 
-  const chargeSalarial = getColumn(reducedPages, 1, 5, 1)
-  const chargePatronal = getColumn(reducedPages, 1, 5, 2)
+const getValueForEntry = (reducedPages, entry) => {
+  const pages = entry.pages instanceof Array ? entry.pages : [entry.pages]
 
-  const secuSalarial = addLines(reducedPages, 0, [5, 6], 3)
-  const secuPatronal = add( addLines(reducedPages, 0, [5, 6], 5), getColumn(reducedPages, 0, 7, 3))
+  return pages.reduce( (memo, page) => {
+    return memo + getValueForlines(reducedPages, page, entry)
+  }, 0);
+}
 
-  const chomageSalarial = getColumn(reducedPages, 0, 9, 3)
-  const chomagePatronal = getColumn(reducedPages, 0, 9, 5)
+const getValueFromConfig = (reducedPages, configKey) => {
+  const configArray = configKey instanceof Array ? configKey : [configKey]
 
-  const apicilSalarial = addLines(reducedPages, 0, [13, 16, 19, 22, 25, 28], 2)
-  const apicilPatronal = addLines(reducedPages, 0, [13, 16, 19, 22, 25, 28], 4)
+  return configArray.reduce( (memo, entry) => {
+    return memo + getValueForEntry(reducedPages, entry)
+  }, 0);
+}
+
+const getValuesFromConfig = (reducedPages, config) => {
+
+  return Object.keys(config).reduce( (ctx ,key) => {
+    ctx[key] = getValueFromConfig(reducedPages, config[key])
+    return ctx
+  }, {})
+}
 
 
-  const prevoyanceSalarial = getColumn(reducedPages, 0, 35, 2)
-  const prevoyancePatronal = add(getColumn(reducedPages, 0, 32, 2) , getColumn(reducedPages, 0, 35, 4))
+module.exports = function(reducedPages, config){
+  const props = getValuesFromConfig(reducedPages, config)
 
-  const csgSalararial = addLines(reducedPages, 0, [37, 38], 3)
-
-  const patronalAutre = addLines(reducedPages, 1, [3, 4], 3)
-
-
-  const totalSalarial = getColumn(reducedPages, 1, 5, 1)
-  const totalPatronal = getColumn(reducedPages, 1, 5, 2)
-
+  const { salaireNet, brut,
+    chargeSalarial, chargePatronal,
+    secuSalarial, secuPatronal,
+    chomageSalarial,chomagePatronal,
+    apicilSalarial , apicilPatronal,
+    prevoyanceSalarial , prevoyancePatronal,
+    csgSalararial, patronalAutre,
+    totalSalarial, totalPatronal } = props;
   const report = []
-
-  const salaireNet = getColumn(reducedPages, 1, 6, 1)
 
   report.push('')
   report.push( { compte : 641000, intitulé: 'Salaire Brut du mois', debit: true, valeur: brut})
